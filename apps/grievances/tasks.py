@@ -1,14 +1,21 @@
 
-
-
-
-
-
 from celery import shared_task
+from django.utils import timezone
+from datetime import timedelta
+
 from apps.grievances.models import Grievance
 from apps.departments.models import Department
+from apps.notifications.tasks import create_notification
+from django.contrib.auth import get_user_model
+
 from common.utils import detect_department, detect_priority
 
+User = get_user_model()
+
+
+# ======================================================
+# 🔹 AI DETECTION TASK
+# ======================================================
 
 @shared_task
 def run_ai_detection(grievance_id):
@@ -37,14 +44,10 @@ def run_ai_detection(grievance_id):
     else:
         final_dept_name = text_dept.strip().capitalize()
 
-    print("FINAL_DEPT_NAME:", final_dept_name)
-
     # 🔹 Match with Department table
     department_obj = Department.objects.filter(
         name__iexact=final_dept_name
     ).first()
-
-    print("DEPARTMENT FOUND:", department_obj)
 
     # ✅ Replace "Pending" with real department
     if department_obj:
@@ -55,8 +58,55 @@ def run_ai_detection(grievance_id):
     # ✅ Store AI metadata
     grievance.detected_issue = image_dept
     grievance.ai_confidence = confidence
-
     grievance.priority = priority
+
     grievance.save()
 
     print(f"✅ AI Processing Completed for Grievance #{grievance.id}")
+
+
+# ======================================================
+# 🚨 ESCALATION TASK
+# ======================================================
+
+@shared_task
+def check_and_escalate_grievances():
+
+    now = timezone.now()
+
+    grievances = Grievance.objects.filter(
+        status__in=["pending", "in_progress"],
+        is_escalated=False
+    )
+
+    for grievance in grievances:
+
+        # 🔥 Priority-based escalation days
+        if grievance.priority == "CRITICAL":
+            escalation_days = 1
+        elif grievance.priority == "HIGH":
+            escalation_days = 2
+        elif grievance.priority == "MEDIUM":
+            escalation_days = 3
+        else:
+            escalation_days = 5
+
+        threshold_date = grievance.created_at + timedelta(days=escalation_days)
+
+        if now >= threshold_date:
+
+            grievance.status = "escalated"
+            grievance.is_escalated = True
+            grievance.escalated_at = now
+            grievance.save()
+
+            # 🔔 Notify all superusers (higher authority)
+            admins = User.objects.filter(is_superuser=True)
+
+            for admin in admins:
+                create_notification.delay(
+                    admin.id,
+                    f"🚨 Grievance #{grievance.id} has been escalated."
+                )
+
+            print(f"🚨 Grievance #{grievance.id} escalated.")
