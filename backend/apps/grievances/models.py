@@ -13,6 +13,9 @@ class Grievance(models.Model):
         ('in_progress', 'In Progress'),
         ('resolved', 'Resolved'),
         ('rejected', 'Rejected'),
+         ('escalated', 'Escalated'),
+
+
     )
 
     PRIORITY_CHOICES = (
@@ -82,6 +85,17 @@ class Grievance(models.Model):
         null=True,
         blank=True
     )
+
+
+        # 🚨 Escalation fields
+    is_escalated = models.BooleanField(default=False)
+
+    escalated_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+
 
     def mark_as_resolved(self):
         self.status = "resolved"
