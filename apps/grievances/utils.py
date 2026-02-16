@@ -91,14 +91,14 @@ def detect_priority(text: str) -> str:
     return "LOW"
 
 
-from difflib import SequenceMatcher
-import hashlib
+# from difflib import SequenceMatcher
+# import hashlib
 
 
-def calculate_text_similarity(text1, text2):
-    return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
+# def calculate_text_similarity(text1, text2):
+#     return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
 
 
-def get_image_hash(image_file):
-    image_file.seek(0)
-    return hashlib.md5(image_file.read()).hexdigest()
+# def get_image_hash(image_file):
+#     image_file.seek(0)
+#     return hashlib.md5(image_file.read()).hexdigest()
