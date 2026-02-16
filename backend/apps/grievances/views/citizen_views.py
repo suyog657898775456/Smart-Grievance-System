@@ -13,11 +13,11 @@ from apps.grievances.tasks import run_ai_detection
 # 🔔 Notification celery task
 from apps.notifications.tasks import create_notification
 
-# 🔍 Duplicate detection utils
-from apps.grievances.utils import (
-    calculate_text_similarity,
-    get_image_hash
-)
+# # 🔍 Duplicate detection utils
+# from apps.grievances.utils import (
+#     calculate_text_similarity,
+#     get_image_hash
+# )
 
 
 class GrievanceViewSet(ModelViewSet):
@@ -36,34 +36,34 @@ class GrievanceViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
 
-        new_title = self.request.data.get("title", "")
-        new_description = self.request.data.get("description", "")
-        new_image = self.request.FILES.get("image")
+        # new_title = self.request.data.get("title", "")
+        # new_description = self.request.data.get("description", "")
+        # new_image = self.request.FILES.get("image")
 
-        existing_grievances = Grievance.objects.all()
+        # existing_grievances = Grievance.objects.all()
 
-        for grievance in existing_grievances:
+        # for grievance in existing_grievances:
 
-            # 🔹 TEXT SIMILARITY CHECK
-            similarity_score = calculate_text_similarity(
-                new_title + new_description,
-                grievance.title + grievance.description
-            )
+        #     # 🔹 TEXT SIMILARITY CHECK
+        #     similarity_score = calculate_text_similarity(
+        #         new_title + new_description,
+        #         grievance.title + grievance.description
+        #     )
 
-            if similarity_score > 0.75:
-                raise ValidationError({
-                    "detail": "Similar complaint already exists (text similarity detected)."
-                })
+        #     if similarity_score > 0.75:
+        #         raise ValidationError({
+        #             "detail": "Similar complaint already exists (text similarity detected)."
+        #         })
 
-            # 🔹 IMAGE SIMILARITY CHECK
-            if new_image and grievance.image:
-                new_hash = get_image_hash(new_image)
-                old_hash = get_image_hash(grievance.image)
+        #     # 🔹 IMAGE SIMILARITY CHECK
+        #     if new_image and grievance.image:
+        #         new_hash = get_image_hash(new_image)
+        #         old_hash = get_image_hash(grievance.image)
 
-                if new_hash == old_hash:
-                    raise ValidationError({
-                        "detail": "Similar complaint already exists (image match detected)."
-                    })
+        #         if new_hash == old_hash:
+        #             raise ValidationError({
+        #                 "detail": "Similar complaint already exists (image match detected)."
+        #             })
 
         # ✅ Save grievance if no duplicate found
         grievance = serializer.save(
