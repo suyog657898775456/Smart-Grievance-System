@@ -1,38 +1,27 @@
 import { useEffect, useState } from "react";
+import { fetchAllComplaints } from "../services/api"; // 👈 Import the API
 
 export default function AdminDashboard() {
   const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(true); // 👈 Added loading state
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
   useEffect(() => {
-    setComplaints([
-      {
-        id: 101,
-        description: "Garbage not collected",
-        status: "Pending",
-        date: "2026-01-28",
-        latitude: 18.5204,
-        longitude: 73.8567,
-      },
-      {
-        id: 102,
-        description: "Water leakage near road",
-        status: "In Progress",
-        date: "2026-01-27",
-        latitude: 18.5314,
-        longitude: 73.8446,
-      },
-      {
-        id: 103,
-        description: "Street light not working",
-        status: "Resolved",
-        date: "2026-01-25",
-        latitude: 18.5167,
-        longitude: 73.856,
-      },
-    ]);
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      // Fetch from our Central Service
+      const data = await fetchAllComplaints();
+      setComplaints(data);
+    } catch (error) {
+      console.error("Failed to load admin data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filtered = complaints.filter((c) => {
     const matchesSearch = c.description
@@ -42,31 +31,36 @@ export default function AdminDashboard() {
     return matchesSearch && matchesStatus;
   });
 
+  if (loading)
+    return (
+      <div className="p-10 text-center text-slate-500">
+        Loading Dashboard...
+      </div>
+    );
+
   return (
-    <div className="max-w-7xl mx-auto px-4">
+    <div className="max-w-7xl mx-auto px-4 py-6 bg-[#F5F7FA] min-h-[calc(100vh-64px)]">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-slate-800">
+        <h2 className="text-2xl font-semibold text-[#0F2A44]">
           Admin – Complaint Management
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Monitor, filter, and track all reported issues
+          Monitor, filter, and track all reported civic issues
         </p>
       </div>
 
       {/* Search + Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row gap-4">
         <input
           placeholder="Search complaints..."
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2
-                     focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:ring-2 focus:ring-[#1ABC9C] focus:border-[#1ABC9C] focus:outline-none"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
         <select
-          className="rounded-lg border border-slate-300 px-3 py-2
-                     focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          className="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:ring-2 focus:ring-[#1ABC9C] focus:border-[#1ABC9C] focus:outline-none"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
@@ -77,28 +71,31 @@ export default function AdminDashboard() {
         </select>
       </div>
 
-      {/* Table (Desktop) */}
-      <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
+      {/* Desktop Table */}
+      <div className="hidden md:block bg-white border border-slate-200 rounded-2xl shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-100 text-slate-600">
             <tr>
-              <th className="px-4 py-3 text-left">ID</th>
-              <th className="px-4 py-3 text-left">Description</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-left">Location</th>
+              <th className="px-4 py-3 text-left font-medium">ID</th>
+              <th className="px-4 py-3 text-left font-medium">Description</th>
+              <th className="px-4 py-3 text-left font-medium">Status</th>
+              <th className="px-4 py-3 text-left font-medium">Location</th>
             </tr>
           </thead>
+
           <tbody>
             {filtered.map((c) => (
               <tr
                 key={c.id}
-                className="border-t border-slate-200 hover:bg-slate-50"
+                className="border-t border-slate-200 hover:bg-slate-50 transition"
               >
-                <td className="px-4 py-3 font-medium">#{c.id}</td>
+                <td className="px-4 py-3 font-medium text-[#0F2A44]">
+                  #{c.id}
+                </td>
 
                 <td className="px-4 py-3">
-                  <p className="font-medium">{c.description}</p>
-                  <p className="text-xs text-slate-500">{c.date}</p>
+                  <p className="font-medium text-[#2C3E50]">{c.description}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{c.date}</p>
                 </td>
 
                 <td className="px-4 py-3">
@@ -106,9 +103,9 @@ export default function AdminDashboard() {
                 </td>
 
                 <td className="px-4 py-3">
-                  <div className="w-40 h-24 rounded overflow-hidden border border-slate-200">
+                  <div className="w-40 h-24 rounded-xl overflow-hidden border border-slate-200">
                     <iframe
-                      title="map"
+                      title={`map-${c.id}`}
                       width="100%"
                       height="100%"
                       loading="lazy"
@@ -127,20 +124,18 @@ export default function AdminDashboard() {
         {filtered.map((c) => (
           <div
             key={c.id}
-            className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm"
+            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm"
           >
-            <p className="font-medium">{c.description}</p>
+            <p className="font-medium text-[#2C3E50]">{c.description}</p>
             <p className="text-sm text-slate-500 mt-1">
               #{c.id} • {c.date}
             </p>
-
             <div className="mt-2">
               <StatusBadge status={c.status} />
             </div>
-
-            <div className="mt-3 rounded-lg overflow-hidden border border-slate-200">
+            <div className="mt-3 rounded-xl overflow-hidden border border-slate-200">
               <iframe
-                title="map"
+                title={`map-mobile-${c.id}`}
                 width="100%"
                 height="160"
                 loading="lazy"
@@ -154,13 +149,12 @@ export default function AdminDashboard() {
   );
 }
 
-/* 🔹 Status Badge */
+/* 🔹 Status Badge (Kept exactly as you designed it) */
 function StatusBadge({ status }) {
   let style = "bg-slate-100 text-slate-600";
-
-  if (status === "Pending") style = "bg-blue-100 text-blue-700";
-  if (status === "In Progress") style = "bg-yellow-100 text-yellow-700";
-  if (status === "Resolved") style = "bg-green-100 text-green-700";
+  if (status === "Pending") style = "bg-[#F4B400]/20 text-[#E67E22]";
+  if (status === "In Progress") style = "bg-[#1ABC9C]/20 text-[#1ABC9C]";
+  if (status === "Resolved") style = "bg-[#2ECC71]/20 text-[#2ECC71]";
 
   return (
     <span className={`${style} px-3 py-1 rounded-full text-xs font-medium`}>
