@@ -1,21 +1,31 @@
 import React, { useState, useEffect } from "react";
-import api from "../services/api";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const ComplaintForm = () => {
   const navigate = useNavigate();
   const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  const API_URL = "http://127.0.0.1:8000/api/grievances/citizen/";
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    department: "Road",
     location: null,
   });
 
-  // 📍 Get GPS location
+  // Handle Image Change & Preview
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -28,37 +38,44 @@ const ComplaintForm = () => {
             },
           }));
         },
-        () => alert("Please enable location permission"),
+        () => alert("Location is mandatory. Please enable GPS permissions."),
       );
     }
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Mandatory checks to prevent Backend "400 Bad Request" errors
+    if (!image) return alert("Please upload a photo of the issue.");
+    if (!formData.location)
+      return alert("Waiting for location. Please wait a moment.");
+
     setIsSubmitting(true);
 
+    // Constructing FormData exactly how Django expects it
     const data = new FormData();
-    data.append("title", formData.title);
-    data.append("description", formData.description);
-    data.append("department", formData.department);
-
-    if (image) data.append("image", image);
-
-    if (formData.location) {
-      data.append("latitude", formData.location.lat);
-      data.append("longitude", formData.location.lng);
-    }
+    data.append("title", formData.title.trim());
+    data.append("description", formData.description.trim());
+    data.append("image", image);
+    data.append("latitude", formData.location.lat);
+    data.append("longitude", formData.location.lng);
 
     try {
-      await api.post("grievances/", data, {
+      await axios.post(API_URL, data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
       setIsSuccess(true);
       setTimeout(() => navigate("/user-dashboard"), 2000);
     } catch (error) {
-      console.error("Upload failed", error.response?.data);
-      alert("Failed to submit complaint");
+      console.error("Backend Error Details:", error.response?.data);
+      // Alerts the specific field error sent by Django
+      const errorMsg = error.response?.data
+        ? Object.entries(error.response.data)
+            .map(([key, val]) => `${key}: ${val}`)
+            .join("\n")
+        : "Server unreachable. Make sure the Django server is running.";
+      alert(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -66,74 +83,123 @@ const ComplaintForm = () => {
 
   if (isSuccess) {
     return (
-      <div className="flex flex-col items-center justify-center p-10 bg-white rounded-lg shadow text-center">
-        <div className="text-green-500 text-6xl mb-4">✅</div>
-        <h2 className="text-2xl font-bold">Complaint Registered!</h2>
-        <p className="text-gray-500">Redirecting to your dashboard...</p>
+      <div className="flex flex-col items-center justify-center p-10 min-h-[60vh] text-center bg-white rounded-3xl shadow-sm mx-4 mt-10 border border-green-100">
+        <div className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center text-4xl mb-6 shadow-lg">
+          ✓
+        </div>
+        <h2 className="text-2xl font-bold text-[#0F2A44]">Report Received</h2>
+        <p className="text-slate-500 mt-2">Thank you for your contribution.</p>
       </div>
     );
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 bg-white p-6 rounded-lg shadow"
-    >
-      <h2 className="text-xl font-bold">Report an Issue</h2>
-
-      <input
-        type="text"
-        placeholder="Issue Title"
-        required
-        disabled={isSubmitting}
-        className="w-full border p-2 rounded disabled:bg-gray-100"
-        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-      />
-
-      <select
-        disabled={isSubmitting}
-        className="w-full border p-2 rounded"
-        onChange={(e) =>
-          setFormData({ ...formData, department: e.target.value })
-        }
+    <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 font-sans">
+      <form
+        onSubmit={handleSubmit}
+        className="max-w-md mx-auto bg-white shadow-2xl rounded-[2.5rem] border border-slate-100 overflow-hidden"
       >
-        <option value="Road">Road</option>
-        <option value="Water">Water</option>
-        <option value="Light">Light</option>
-        <option value="Sewage">Sewage</option>
-        <option value="Garbage">Garbage</option>
-      </select>
+        {/* Header Section */}
+        <div className="bg-[#0F2A44] p-8 text-white relative">
+          <h2 className="text-2xl font-bold tracking-tight">New Report</h2>
+          <p className="text-blue-200 text-sm mt-1 opacity-90">
+            Fill in the details below
+          </p>
 
-      <textarea
-        placeholder="Describe the issue..."
-        disabled={isSubmitting}
-        className="w-full border p-2 rounded h-32"
-        onChange={(e) =>
-          setFormData({ ...formData, description: e.target.value })
-        }
-      />
+          {/* Location Badge */}
+          <div
+            className={`absolute top-8 right-6 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${
+              formData.location
+                ? "bg-green-500/20 border-green-400 text-green-400"
+                : "bg-orange-500/20 border-orange-400 text-orange-400 animate-pulse"
+            }`}
+          >
+            {formData.location ? "● Location Locked" : "○ Finding GPS..."}
+          </div>
+        </div>
 
-      <div className="border-2 border-dashed p-4 text-center rounded">
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setImage(e.target.files[0])}
-          disabled={isSubmitting}
-        />
-      </div>
+        <div className="p-8 space-y-6">
+          {/* Issue Title */}
+          <div className="group">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Issue Title
+            </label>
+            <input
+              type="text"
+              placeholder="What is the problem?"
+              required
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400"
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+            />
+          </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting || !formData.location}
-        className={`w-full py-3 rounded font-bold text-white transition ${
-          isSubmitting
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-blue-600 hover:bg-blue-700"
-        }`}
-      >
-        {isSubmitting ? "Uploading..." : "Submit Report"}
-      </button>
-    </form>
+          {/* Detailed Description */}
+          <div className="group">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Description
+            </label>
+            <textarea
+              placeholder="Describe what you see..."
+              required
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl h-32 outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800 placeholder:text-slate-400 resize-none"
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+            />
+          </div>
+
+          {/* Photo Evidence */}
+          <div className="group">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              Evidence Photo
+            </label>
+            <div className="relative border-2 border-dashed border-slate-300 rounded-[2rem] bg-slate-50 hover:bg-slate-100 transition-all overflow-hidden group/box min-h-[160px] flex items-center justify-center">
+              <input
+                type="file"
+                accept="image/*"
+                required
+                className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                onChange={handleImageChange}
+              />
+
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="h-full w-full object-cover z-10"
+                />
+              ) : (
+                <div className="text-center p-6">
+                  <div className="text-3xl mb-2 opacity-40">📷</div>
+                  <p className="text-xs font-semibold text-slate-400">
+                    Tap to Capture / Upload
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <button
+            type="submit"
+            disabled={isSubmitting || !formData.location}
+            className={`w-full py-5 rounded-[2rem] font-black text-sm uppercase tracking-widest text-white shadow-xl flex items-center justify-center gap-3 transition-all active:scale-95 ${
+              isSubmitting || !formData.location
+                ? "bg-slate-200 text-slate-400 shadow-none cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 hover:shadow-blue-500/20"
+            }`}
+          >
+            {isSubmitting ? (
+              <div className="w-5 h-5 border-[3px] border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              "Send Report"
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 };
 

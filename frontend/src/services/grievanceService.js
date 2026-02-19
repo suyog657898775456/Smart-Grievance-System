@@ -1,17 +1,16 @@
-import API from "./api";
+import axios from "axios";
 
-// Get logged-in user's complaints
+// Updated URL provided by your friend
+const API_URL = "http://127.0.0.1:8000/api/grievances/citizen/";
+
 export const fetchUserComplaints = async () => {
-  const res = await API.get("grievances/");
-  return res.data;
-};
+  try {
+    const response = await axios.get(API_URL);
 
-// Create new complaint
-export const createComplaint = async (data) => {
-  const res = await API.post("grievances/", data, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
-  return res.data;
+    // DRF results often come in response.data or response.data.results
+    return response.data.results || response.data;
+  } catch (error) {
+    console.error("Error fetching from Django:", error);
+    throw error;
+  }
 };
