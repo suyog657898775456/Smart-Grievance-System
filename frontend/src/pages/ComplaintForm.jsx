@@ -1,179 +1,140 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // 👈 For redirection
-import { submitComplaint } from "../services/api"; // 👈 Import API
+import React, { useState, useEffect } from "react";
+import api from "../services/api";
+import { useNavigate } from "react-router-dom";
 
-export default function ComplaintForm() {
+const ComplaintForm = () => {
   const navigate = useNavigate();
-  const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
-
-  // Loading state for the submit button
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  const [location, setLocation] = useState({
-    latitude: null,
-    longitude: null,
-    address: "",
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    department: "Road",
+    location: null,
   });
 
-  const [loadingLocation, setLoadingLocation] = useState(false);
-
   // 📍 Get GPS location
-  const getLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation not supported");
-      return;
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormData((prev) => ({
+            ...prev,
+            location: {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            },
+          }));
+        },
+        () => alert("Please enable location permission"),
+      );
     }
-
-    setLoadingLocation(true);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          ...location,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-        setLoadingLocation(false);
-      },
-      () => {
-        alert("Unable to fetch location");
-        setLoadingLocation(false);
-      },
-    );
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // 1. Prepare Data using FormData (Required for Image Uploads)
-    const formData = new FormData();
-    formData.append("description", description);
-    formData.append("latitude", location.latitude || "");
-    formData.append("longitude", location.longitude || "");
-    formData.append("address", location.address);
-    if (image) {
-      formData.append("image", image);
+    const data = new FormData();
+    data.append("title", formData.title);
+    data.append("description", formData.description);
+    data.append("department", formData.department);
+
+    if (image) data.append("image", image);
+
+    if (formData.location) {
+      data.append("latitude", formData.location.lat);
+      data.append("longitude", formData.location.lng);
     }
 
     try {
-      // 2. Send to API
-      await submitComplaint(formData);
+      await api.post("grievances/", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-      // 3. Success Feedback & Redirect
-      alert("Complaint Registered Successfully!");
-      navigate("/my-complaints"); // Redirect to history page
+      setIsSuccess(true);
+      setTimeout(() => navigate("/user-dashboard"), 2000);
     } catch (error) {
-      console.error("Submission failed", error);
-      alert("Failed to submit complaint. Please try again.");
+      console.error("Upload failed", error.response?.data);
+      alert("Failed to submit complaint");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="flex justify-center px-4 py-10 bg-[#F5F7FA] min-h-[calc(100vh-64px)]">
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-[#0F2A44]">
-            Register a Complaint
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Submit civic issues with accurate location for faster resolution
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-[#2C3E50] mb-1">
-              Problem Description
-            </label>
-            <textarea
-              rows="4"
-              className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm focus:ring-2 focus:ring-[#1ABC9C] focus:border-[#1ABC9C] focus:outline-none resize-none"
-              placeholder="Describe the issue clearly..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Location */}
-          <div>
-            <label className="block text-sm font-medium text-[#2C3E50] mb-2">
-              Location
-            </label>
-
-            <button
-              type="button"
-              onClick={getLocation}
-              className={`w-full flex items-center justify-center gap-2 border border-[#1ABC9C] text-[#1ABC9C] py-2.5 rounded-xl font-medium hover:bg-[#1ABC9C]/10 transition ${loadingLocation ? "opacity-70 cursor-not-allowed" : ""}`}
-              disabled={loadingLocation}
-            >
-              {loadingLocation
-                ? "Detecting location..."
-                : "📍 Use Current Location"}
-            </button>
-
-            {location.latitude && location.longitude && (
-              <p className="text-xs text-[#2ECC71] mt-2">
-                Location captured successfully: {location.latitude.toFixed(4)},{" "}
-                {location.longitude.toFixed(4)} ✔
-              </p>
-            )}
-          </div>
-
-          {/* Manual Address */}
-          <div>
-            <label className="block text-sm font-medium text-[#2C3E50] mb-1">
-              Area / Landmark (optional)
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm focus:ring-2 focus:ring-[#1ABC9C] focus:border-[#1ABC9C] focus:outline-none"
-              placeholder="Near bus stop, street name, area..."
-              value={location.address}
-              onChange={(e) =>
-                setLocation({ ...location, address: e.target.value })
-              }
-            />
-          </div>
-
-          {/* Image Upload */}
-          <div>
-            <label className="block text-sm font-medium text-[#2C3E50] mb-2">
-              Upload Image (optional)
-            </label>
-
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl px-4 py-6 cursor-pointer text-sm text-slate-500 hover:border-[#1ABC9C] hover:text-[#1ABC9C] transition">
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={(e) => setImage(e.target.files[0])}
-              />
-              <span className="mb-1">📷 Click to upload image</span>
-              {image && (
-                <span className="text-xs text-[#2C3E50] mt-1 font-semibold">
-                  Selected: {image.name}
-                </span>
-              )}
-            </label>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`w-full bg-[#0F2A44] text-white py-3 rounded-xl font-medium transition ${isSubmitting ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"}`}
-          >
-            {isSubmitting ? "Submitting Complaint..." : "Submit Complaint"}
-          </button>
-        </form>
+  if (isSuccess) {
+    return (
+      <div className="flex flex-col items-center justify-center p-10 bg-white rounded-lg shadow text-center">
+        <div className="text-green-500 text-6xl mb-4">✅</div>
+        <h2 className="text-2xl font-bold">Complaint Registered!</h2>
+        <p className="text-gray-500">Redirecting to your dashboard...</p>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 bg-white p-6 rounded-lg shadow"
+    >
+      <h2 className="text-xl font-bold">Report an Issue</h2>
+
+      <input
+        type="text"
+        placeholder="Issue Title"
+        required
+        disabled={isSubmitting}
+        className="w-full border p-2 rounded disabled:bg-gray-100"
+        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+      />
+
+      <select
+        disabled={isSubmitting}
+        className="w-full border p-2 rounded"
+        onChange={(e) =>
+          setFormData({ ...formData, department: e.target.value })
+        }
+      >
+        <option value="Road">Road</option>
+        <option value="Water">Water</option>
+        <option value="Light">Light</option>
+        <option value="Sewage">Sewage</option>
+        <option value="Garbage">Garbage</option>
+      </select>
+
+      <textarea
+        placeholder="Describe the issue..."
+        disabled={isSubmitting}
+        className="w-full border p-2 rounded h-32"
+        onChange={(e) =>
+          setFormData({ ...formData, description: e.target.value })
+        }
+      />
+
+      <div className="border-2 border-dashed p-4 text-center rounded">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setImage(e.target.files[0])}
+          disabled={isSubmitting}
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isSubmitting || !formData.location}
+        className={`w-full py-3 rounded font-bold text-white transition ${
+          isSubmitting
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-blue-600 hover:bg-blue-700"
+        }`}
+      >
+        {isSubmitting ? "Uploading..." : "Submit Report"}
+      </button>
+    </form>
   );
-}
+};
+
+export default ComplaintForm;

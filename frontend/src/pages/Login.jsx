@@ -1,150 +1,77 @@
-import { useState, useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { AuthContext } from "../context/AuthContext"; // 👈 Import Context
-import { loginUser } from "../services/api"; // 👈 Import API
+import React, { useState, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+import { Link } from "react-router-dom";
 
-export default function Login() {
-  const navigate = useNavigate();
-  const { login } = useContext(AuthContext); // Get the global login function
-
-  const [form, setForm] = useState({
-    email: "",
+const Login = () => {
+  const [credentials, setCredentials] = useState({
+    username: "",
     password: "",
   });
-
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { login } = useContext(AuthContext);
+
+  const handleChange = (e) => {
+    setCredentials({ ...credentials, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
-
     try {
-      // 1. Call the API (Simulated or Real)
-      const userData = await loginUser(form.email, form.password);
-
-      // 2. Save User to Context
-      login(userData);
-
-      // 3. Redirect based on Role
-      if (userData.role === "ADMIN") {
-        navigate("/admin");
-      } else if (userData.role === "STAFF") {
-        navigate("/municipal-dashboard");
-      } else {
-        navigate("/user-dashboard");
-      }
+      await login(credentials.username, credentials.password);
+      // Redirection is handled inside AuthContext.js based on role!
     } catch (err) {
-      setError("Invalid email or password. Please try again.");
-    } finally {
-      setLoading(false);
+      setError("Invalid username or password. Please try again.");
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-64px)] bg-[#F5F7FA] px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
-        {/* Header */}
-        <div className="mb-6 text-center">
-          <h2 className="text-2xl font-semibold text-[#0F2A44]">
-            Welcome Back 👋
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full space-y-8 p-8 bg-white shadow-lg rounded-xl">
+        <div>
+          <h2 className="text-center text-3xl font-extrabold text-gray-900">
+            Sign in to Smart Grievance
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Login to access your grievance dashboard
-          </p>
         </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center border border-red-100">
-            {error}
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[#2C3E50] mb-1">
-              Email
-            </label>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+          <div className="rounded-md shadow-sm space-y-4">
             <input
-              type="email"
-              placeholder="you@example.com"
-              className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm focus:ring-2 focus:ring-[#1ABC9C] focus:border-[#1ABC9C] focus:outline-none"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              name="username"
+              type="text"
               required
+              className="w-full border p-3 rounded-lg"
+              placeholder="Username"
+              onChange={handleChange}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#2C3E50] mb-1">
-              Password
-            </label>
             <input
+              name="password"
               type="password"
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-slate-300 px-4 py-2 text-sm focus:ring-2 focus:ring-[#1ABC9C] focus:border-[#1ABC9C] focus:outline-none"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
+              className="w-full border p-3 rounded-lg"
+              placeholder="Password"
+              onChange={handleChange}
             />
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className={`w-full bg-[#0F2A44] text-white py-3 rounded-xl font-medium transition ${loading ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"}`}
+            className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
           >
-            {loading ? "Signing In..." : "Login"}
+            Sign in
           </button>
         </form>
-
-        {/* Footer */}
-        <p className="text-sm text-center text-slate-600 mt-6">
-          Don’t have an account?{" "}
-          <Link
-            to="/register"
-            className="text-[#1ABC9C] font-medium hover:underline"
-          >
-            Register
-          </Link>
-        </p>
-
-        {/* 🧪 TEST CREDENTIALS BOX (Remove later) */}
-        <div className="mt-8 p-4 bg-slate-50 rounded-xl text-xs text-slate-500 border border-slate-200">
-          <p className="font-bold mb-2 text-slate-700 uppercase tracking-wider">
-            🧪 Quick Test Login
+        <div className="text-center mt-4">
+          <p className="text-sm text-gray-600">
+            New user?{" "}
+            <Link to="/register" className="text-blue-600 font-medium">
+              Create an account
+            </Link>
           </p>
-          <div className="space-y-2">
-            <button
-              onClick={() =>
-                setForm({ email: "admin@city.com", password: "admin123" })
-              }
-              className="block w-full text-left hover:text-[#0F2A44] hover:bg-white p-2 rounded transition"
-            >
-              👮‍♂️ <b>Admin:</b> admin@city.com
-            </button>
-            <button
-              onClick={() =>
-                setForm({ email: "staff@city.com", password: "staff123" })
-              }
-              className="block w-full text-left hover:text-[#0F2A44] hover:bg-white p-2 rounded transition"
-            >
-              👷 <b>Staff:</b> staff@city.com
-            </button>
-            <button
-              onClick={() =>
-                setForm({ email: "citizen@gmail.com", password: "citizen123" })
-              }
-              className="block w-full text-left hover:text-[#0F2A44] hover:bg-white p-2 rounded transition"
-            >
-              🧑‍🤝‍🧑 <b>Citizen:</b> citizen@gmail.com
-            </button>
-          </div>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default Login;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchDashboardData } from "../services/api";
+import { fetchDashboardData } from "../services/dashboardService";
+
 
 const MunicipalDashboard = () => {
   // --- TEMPORARY: HARDCODE USER FOR TESTING ---

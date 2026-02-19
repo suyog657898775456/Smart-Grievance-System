@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchUserComplaints } from "../services/api"; // 👈 Import the API service
+import { fetchUserComplaints } from "../services/grievanceService";
+
 
 export default function MyComplaints() {
   const [complaints, setComplaints] = useState([]);

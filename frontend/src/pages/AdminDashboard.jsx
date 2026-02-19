@@ -1,164 +1,106 @@
-import { useEffect, useState } from "react";
-import { fetchAllComplaints } from "../services/api"; // 👈 Import the API
+import React, { useEffect, useState, useContext } from "react";
+import api from "../services/api";
+import { AuthContext } from "../context/AuthContext"; // Import Context
+import StatusBadge from "../components/StatusBadge";
 
-export default function AdminDashboard() {
-  const [complaints, setComplaints] = useState([]);
-  const [loading, setLoading] = useState(true); // 👈 Added loading state
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+const AdminDashboard = () => {
+  const { user } = useContext(AuthContext); // Get logged-in admin's info
+  const [grievances, setGrievances] = useState([]);
+
+  // Use the department from the logged-in user's profile
+  const adminDept = user?.department || "General";
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) {
+      fetchAdminData();
+    }
+  }, [user, adminDept]);
 
-  const loadData = async () => {
+  const fetchAdminData = async () => {
     try {
-      // Fetch from our Central Service
-      const data = await fetchAllComplaints();
-      setComplaints(data);
+      const response = await api.get("grievances/admin/");
+      // Filter logic: Only show grievances matching this Admin's department
+      const filtered = response.data.filter((g) => g.department === adminDept);
+      setGrievances(filtered);
     } catch (error) {
-      console.error("Failed to load admin data", error);
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch admin data", error);
     }
   };
 
-  const filtered = complaints.filter((c) => {
-    const matchesSearch = c.description
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "All" || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  if (loading)
-    return (
-      <div className="p-10 text-center text-slate-500">
-        Loading Dashboard...
-      </div>
-    );
+  const updateStatus = async (id, newStatus) => {
+    try {
+      await api.patch(`grievances/admin/${id}/`, { status: newStatus });
+      fetchAdminData();
+      alert(`Status updated to ${newStatus.replace("_", " ")}`);
+    } catch (error) {
+      alert("Update failed");
+    }
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 bg-[#F5F7FA] min-h-[calc(100vh-64px)]">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-[#0F2A44]">
-          Admin – Complaint Management
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Monitor, filter, and track all reported civic issues
-        </p>
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">
+          {adminDept} Admin Portal
+        </h1>
+        <div className="text-sm text-gray-500">
+          Logged in as: <span className="font-semibold">{user?.username}</span>
+        </div>
       </div>
 
-      {/* Search + Filter */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row gap-4">
-        <input
-          placeholder="Search complaints..."
-          className="flex-1 rounded-xl border border-slate-300 px-4 py-2 text-sm focus:ring-2 focus:ring-[#1ABC9C] focus:border-[#1ABC9C] focus:outline-none"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <select
-          className="rounded-xl border border-slate-300 px-4 py-2 text-sm focus:ring-2 focus:ring-[#1ABC9C] focus:border-[#1ABC9C] focus:outline-none"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option>All</option>
-          <option>Pending</option>
-          <option>In Progress</option>
-          <option>Resolved</option>
-        </select>
-      </div>
-
-      {/* Desktop Table */}
-      <div className="hidden md:block bg-white border border-slate-200 rounded-2xl shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-100 text-slate-600">
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <table className="min-w-full bg-white">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left font-medium">ID</th>
-              <th className="px-4 py-3 text-left font-medium">Description</th>
-              <th className="px-4 py-3 text-left font-medium">Status</th>
-              <th className="px-4 py-3 text-left font-medium">Location</th>
+              <th className="p-4 text-left text-xs font-semibold text-gray-600 uppercase">
+                Title
+              </th>
+              <th className="p-4 text-left text-xs font-semibold text-gray-600 uppercase">
+                Status
+              </th>
+              <th className="p-4 text-left text-xs font-semibold text-gray-600 uppercase">
+                Update Progress
+              </th>
             </tr>
           </thead>
-
-          <tbody>
-            {filtered.map((c) => (
-              <tr
-                key={c.id}
-                className="border-t border-slate-200 hover:bg-slate-50 transition"
-              >
-                <td className="px-4 py-3 font-medium text-[#0F2A44]">
-                  #{c.id}
-                </td>
-
-                <td className="px-4 py-3">
-                  <p className="font-medium text-[#2C3E50]">{c.description}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{c.date}</p>
-                </td>
-
-                <td className="px-4 py-3">
-                  <StatusBadge status={c.status} />
-                </td>
-
-                <td className="px-4 py-3">
-                  <div className="w-40 h-24 rounded-xl overflow-hidden border border-slate-200">
-                    <iframe
-                      title={`map-${c.id}`}
-                      width="100%"
-                      height="100%"
-                      loading="lazy"
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${c.longitude - 0.004}%2C${c.latitude - 0.004}%2C${c.longitude + 0.004}%2C${c.latitude + 0.004}&layer=mapnik&marker=${c.latitude}%2C${c.longitude}`}
-                    />
-                  </div>
+          <tbody className="divide-y divide-gray-200">
+            {grievances.length > 0 ? (
+              grievances.map((g) => (
+                <tr key={g.id} className="hover:bg-gray-50 transition">
+                  <td className="p-4 text-sm text-gray-900 font-medium">
+                    {g.title}
+                  </td>
+                  <td className="p-4">
+                    <StatusBadge status={g.status} />
+                  </td>
+                  <td className="p-4">
+                    <select
+                      className="border rounded p-1 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                      onChange={(e) => updateStatus(g.id, e.target.value)}
+                      defaultValue={g.status}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="in_progress">Working</option>
+                      <option value="resolved">Done</option>
+                      <option value="rejected">Reject</option>
+                    </select>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="3" className="p-10 text-center text-gray-400">
+                  No grievances currently assigned to the {adminDept}{" "}
+                  department.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
-
-      {/* Mobile Cards */}
-      <div className="space-y-4 md:hidden">
-        {filtered.map((c) => (
-          <div
-            key={c.id}
-            className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm"
-          >
-            <p className="font-medium text-[#2C3E50]">{c.description}</p>
-            <p className="text-sm text-slate-500 mt-1">
-              #{c.id} • {c.date}
-            </p>
-            <div className="mt-2">
-              <StatusBadge status={c.status} />
-            </div>
-            <div className="mt-3 rounded-xl overflow-hidden border border-slate-200">
-              <iframe
-                title={`map-mobile-${c.id}`}
-                width="100%"
-                height="160"
-                loading="lazy"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${c.longitude - 0.004}%2C${c.latitude - 0.004}%2C${c.longitude + 0.004}%2C${c.latitude + 0.004}&layer=mapnik&marker=${c.latitude}%2C${c.longitude}`}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
-}
+};
 
-/* 🔹 Status Badge (Kept exactly as you designed it) */
-function StatusBadge({ status }) {
-  let style = "bg-slate-100 text-slate-600";
-  if (status === "Pending") style = "bg-[#F4B400]/20 text-[#E67E22]";
-  if (status === "In Progress") style = "bg-[#1ABC9C]/20 text-[#1ABC9C]";
-  if (status === "Resolved") style = "bg-[#2ECC71]/20 text-[#2ECC71]";
-
-  return (
-    <span className={`${style} px-3 py-1 rounded-full text-xs font-medium`}>
-      {status}
-    </span>
-  );
-}
+export default AdminDashboard;
