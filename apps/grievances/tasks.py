@@ -39,7 +39,7 @@ def run_ai_detection(grievance_id):
         image_dept, confidence = predict_image(grievance.image.path)
 
     # 🔥 Hybrid decision logic
-    if image_dept and confidence > 0.75:
+    if image_dept and confidence > 0.4:
         final_dept_name = image_dept.strip().capitalize()
     else:
         final_dept_name = text_dept.strip().capitalize()
