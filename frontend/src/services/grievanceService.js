@@ -1,16 +1,22 @@
 import axios from "axios";
 
-// Updated URL provided by your friend
 const API_URL = "http://127.0.0.1:8000/api/grievances/citizen/";
 
 export const fetchUserComplaints = async () => {
   try {
-    const response = await axios.get(API_URL);
+    const token = localStorage.getItem("access"); // must match login storage key
 
-    // DRF results often come in response.data or response.data.results
+    const response = await axios.get(API_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    // DRF pagination check
     return response.data.results || response.data;
+
   } catch (error) {
-    console.error("Error fetching from Django:", error);
+    console.error("Error fetching from Django:", error.response?.data || error);
     throw error;
   }
 };

@@ -60,10 +60,14 @@ const ComplaintForm = () => {
     data.append("image", image);
     data.append("latitude", formData.location.lat);
     data.append("longitude", formData.location.lng);
-
+    const token = localStorage.getItem("access")
     try {
       await axios.post(API_URL, data, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`,  // ✅ Bearer added
+      },
+
       });
       setIsSuccess(true);
       setTimeout(() => navigate("/user-dashboard"), 2000);
