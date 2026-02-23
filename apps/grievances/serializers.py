@@ -68,6 +68,13 @@ from rest_framework import serializers
 from django.contrib.gis.geos import Point
 from apps.grievances.models import Grievance
 import requests 
+from rest_framework import serializers
+from django.contrib.gis.geos import Point
+from apps.grievances.models import Grievance
+from rest_framework import serializers
+from django.contrib.gis.geos import Point
+from apps.grievances.models import Grievance
+import requests # पत्त्यासाठी याची गरज लागू शकते
 
 # ======================================================
 # 📝 Main Grievance Serializer (With Address Logic)
@@ -78,6 +85,7 @@ class GrievanceSerializer(serializers.ModelSerializer):
     longitude = serializers.FloatField(source="location.x", read_only=True)
     citizen_name = serializers.SerializerMethodField()
  
+    # 📍 पत्ता दाखवण्यासाठी नवीन फील्ड
     formatted_address = serializers.SerializerMethodField()
 
     class Meta:
@@ -91,6 +99,7 @@ class GrievanceSerializer(serializers.ModelSerializer):
 
     def get_citizen_name(self, obj):
     
+        # युजरचे नाव मिळवणे
         return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.username
 
     def get_formatted_address(self, obj):
