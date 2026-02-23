@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 
 
 # from rest_framework import serializers
@@ -61,12 +60,14 @@
 
 
 
-=======
->>>>>>> 9cbf82e3df9d1b8ebbb8a78fa98ffd8102233151
+
+
+
+
 from rest_framework import serializers
 from django.contrib.gis.geos import Point
 from apps.grievances.models import Grievance
-import requests # पत्त्यासाठी याची गरज लागू शकते
+import requests 
 
 # ======================================================
 # 📝 Main Grievance Serializer (With Address Logic)
@@ -76,11 +77,7 @@ class GrievanceSerializer(serializers.ModelSerializer):
     latitude = serializers.FloatField(source="location.y", read_only=True)
     longitude = serializers.FloatField(source="location.x", read_only=True)
     citizen_name = serializers.SerializerMethodField()
-<<<<<<< HEAD
  
-=======
-    # 📍 पत्ता दाखवण्यासाठी नवीन फील्ड
->>>>>>> 9cbf82e3df9d1b8ebbb8a78fa98ffd8102233151
     formatted_address = serializers.SerializerMethodField()
 
     class Meta:
@@ -93,11 +90,7 @@ class GrievanceSerializer(serializers.ModelSerializer):
         read_only_fields = ["department", "priority", "status", "created_at"]
 
     def get_citizen_name(self, obj):
-<<<<<<< HEAD
     
-=======
-        # युजरचे नाव मिळवणे
->>>>>>> 9cbf82e3df9d1b8ebbb8a78fa98ffd8102233151
         return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.username
 
     def get_formatted_address(self, obj):
